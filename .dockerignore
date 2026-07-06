@@ -1,0 +1,8 @@
+target/
+.git/
+.idea/
+*.iml
+.vscode/
+k8s/
+.github/
+README.md

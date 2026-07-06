@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: hello-world-service
+  profiles:
+    default: dev
+  jpa:
+    hibernate:
+      ddl-auto: validate   # schema is owned by Flyway
+    open-in-view: false
+  flyway:
+    enabled: true
+  http:
+    client:
+      # Timeout pattern for all RestClient-based external calls
+      connect-timeout: 2s
+      read-timeout: 3s
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true    # /actuator/health/{liveness,readiness} for Kubernetes
+      show-details: when_authorized
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: '@project.name@'
+    version: '@project.version@'
+
+hello:
+  quote:
+    mode: simulated              # simulated | http
+    base-url: https://quotes.internal.example.com
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

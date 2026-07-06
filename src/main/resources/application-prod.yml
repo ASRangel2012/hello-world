@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 3000
+  security:
+    user:
+      name: ${API_USERNAME}
+      password: ${API_PASSWORD}
+
+# JSON structured logs (Elastic Common Schema); MDC fields such as
+# correlationId are included automatically.
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+    com.example.helloworld: INFO
+
+springdoc:
+  api-docs:
+    enabled: false   # do not expose API docs publicly in production
+  swagger-ui:
+    enabled: false

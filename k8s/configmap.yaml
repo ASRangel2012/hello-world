@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hello-world
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-world-service-config
+  namespace: hello-world
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_URL: "jdbc:postgresql://postgres.database.svc.cluster.local:5432/hello"
+  HELLO_QUOTE_MODE: "simulated"

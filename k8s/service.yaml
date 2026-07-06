@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-service
+  namespace: hello-world
+  labels:
+    app: hello-world-service
+spec:
+  type: ClusterIP
+  selector:
+    app: hello-world-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

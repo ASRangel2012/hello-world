@@ -1,0 +1,10 @@
+# Datasource is provided by Testcontainers via @ServiceConnection.
+spring:
+  security:
+    user:
+      name: test
+      password: test
+
+hello:
+  quote:
+    mode: simulated
