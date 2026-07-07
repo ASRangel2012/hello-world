@@ -1,6 +1,6 @@
 # hello-world-service
 
-Production-grade "hello world" microservice built with **Spring Boot 4.0.5** on **Java 25 (LTS)**. Small in scope, but structured the way a real service should be: layered architecture, versioned REST API, externalized configuration, observability, resilience, security, and a full path to Kubernetes.
+Production-grade "hello world" microservice built with **Spring Boot 4.0.5** on **Java 25 (LTS)**, using **Gradle** (Kotlin DSL). Small in scope, but structured the way a real service should be: layered architecture, versioned REST API, externalized configuration, observability, resilience, security, and a full path to Kubernetes.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ Key decisions:
 ## Prerequisites
 
 - JDK 25 (Temurin recommended)
-- Maven 3.9+ (or use `mvnw` if you add the wrapper: `mvn wrapper:wrapper`)
+- Gradle 9.5+ (or generate the wrapper once with `gradle wrapper` and commit it)
 - Docker (for docker-compose and Testcontainers-based integration tests)
 - kubectl + a cluster (deployment only)
 
@@ -33,7 +33,7 @@ Key decisions:
 
 ```bash
 # Run with the dev profile (default): in-memory H2, credentials dev/dev
-mvn spring-boot:run
+gradle bootRun
 ```
 
 Useful URLs (dev):
@@ -67,12 +67,14 @@ docker compose up --build
 ## Build & test
 
 ```bash
-mvn verify          # unit tests (Surefire) + Testcontainers ITs (Failsafe) + JaCoCo report
-mvn package         # executable layered JAR in target/
+gradle build            # unit tests + Testcontainers ITs (integrationTest) + JaCoCo + boot JAR
+gradle test             # unit tests only (no Docker needed)
+gradle integrationTest  # *IT tests only (requires Docker)
+gradle bootJar          # executable layered JAR in build/libs/
 docker build -t hello-world-service:local .
 ```
 
-Unit tests run without Docker; the `*IT` integration test needs a Docker daemon (spins up `postgres:17-alpine`).
+Unit tests run without Docker; the `*IT` integration tests need a Docker daemon (spins up `postgres:17-alpine`).
 
 ## API
 
@@ -108,7 +110,7 @@ Errors follow RFC 9457, e.g. `GET /api/v1/greetings/hello?locale=xx`:
 
 `.github/workflows/ci.yml`:
 
-1. **build-test** — `mvn verify` on Temurin 25 (unit + integration tests, JaCoCo), then SonarQube analysis (`SONAR_TOKEN`/`SONAR_HOST_URL`).
+1. **build-test** — `gradle build` on Temurin 25 / Gradle 9.5.1 (unit + integration tests, JaCoCo), then SonarQube analysis (`SONAR_TOKEN`/`SONAR_HOST_URL`).
 2. **docker** — multi-stage layered-JAR image built and pushed to GHCR (`:sha` + `:latest`), main branch only.
 3. **deploy** — pins the immutable image SHA into the manifest, then applies `k8s/` manifests (single rollout); gated by the `production` environment.
 
