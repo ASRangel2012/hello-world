@@ -29,27 +29,28 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
 
-      # Unit tests (Surefire) + integration tests with Testcontainers (Failsafe)
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      # Unit tests (test) + Testcontainers integration tests (integrationTest via check)
       - name: Build and verify
-        run: mvn -B verify
+        run: gradle build
 
       - name: Static analysis (SonarQube)
         if: ${{ secrets.SONAR_TOKEN != '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-        run: >
-          mvn -B sonar:sonar
-          -Dsonar.projectKey=hello-world-service
-          -Dsonar.host.url=$SONAR_HOST_URL
+        run: gradle sonar -Dsonar.host.url=$SONAR_HOST_URL
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: app-jar
-          path: target/hello-world-service-*.jar
+          path: build/libs/hello-world-service-*.jar
           retention-days: 7
 
   docker:

@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1
 
 ########## Stage 1: build ##########
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM gradle:9.5.1-jdk25 AS build
 WORKDIR /workspace
 
 # Cache dependencies separately from source changes
-COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q dependency:go-offline
+COPY build.gradle.kts settings.gradle.kts ./
+RUN --mount=type=cache,target=/home/gradle/.gradle gradle --no-daemon --quiet dependencies
 
 COPY src src
-RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests
+RUN --mount=type=cache,target=/home/gradle/.gradle gradle --no-daemon bootJar
 
 ########## Stage 2: extract layered JAR ##########
 FROM eclipse-temurin:25-jre-alpine AS extract
 WORKDIR /extracted
-COPY --from=build /workspace/target/hello-world-service-*.jar application.jar
+COPY --from=build /workspace/build/libs/hello-world-service-*.jar application.jar
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination .
 
 ########## Stage 3: runtime (minimal Alpine JRE, non-root) ##########
