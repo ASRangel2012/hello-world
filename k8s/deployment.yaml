@@ -21,7 +21,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: /actuator/prometheus
-        prometheus.io/port: "8080"
+        prometheus.io/port: "8081"   # management port, never routed by the ingress
     spec:
       securityContext:
         runAsNonRoot: true
@@ -30,11 +30,13 @@ spec:
           type: RuntimeDefault
       containers:
         - name: hello-world-service
-          image: ghcr.io/example/hello-world-service:latest  # CI pins the SHA tag
+          image: ghcr.io/example/hello-world-service:latest  # CI substitutes the immutable SHA tag before apply
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8080
+            - name: management
+              containerPort: 8081
           envFrom:
             - configMapRef:
                 name: hello-world-service-config
@@ -49,19 +51,19 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: http
+              port: management
             periodSeconds: 5
             failureThreshold: 24   # up to 2 min for JVM start
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: http
+              port: management
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: http
+              port: management
             periodSeconds: 10
             failureThreshold: 3
           securityContext:

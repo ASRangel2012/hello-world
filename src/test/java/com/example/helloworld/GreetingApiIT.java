@@ -1,6 +1,7 @@
 package com.example.helloworld;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -38,9 +39,18 @@ class GreetingApiIT {
         mockMvc.perform(get("/api/v1/greetings/hello")
                         .param("name", "Grace").param("locale", "es"))
                 .andExpect(status().isOk())
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
                 .andExpect(jsonPath("$.message").value("¡Hola, Grace!"))
                 .andExpect(jsonPath("$.timestamp").exists())
                 .andExpect(jsonPath("$.version").exists());
+    }
+
+    @Test
+    void localeLookupIsCaseInsensitive() throws Exception {
+        mockMvc.perform(get("/api/v1/greetings/hello")
+                        .param("name", "Grace").param("locale", "ES"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("¡Hola, Grace!"));
     }
 
     @Test
@@ -51,7 +61,7 @@ class GreetingApiIT {
     }
 
     @Test
-    void readinessProbeIsUp() throws Exception {
+    void readinessProbeIncludesDatabaseAndIsUp() throws Exception {
         mockMvc.perform(get("/actuator/health/readiness"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
