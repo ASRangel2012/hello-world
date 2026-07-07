@@ -9,6 +9,11 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  cache:
+    type: caffeine
+    cache-names: greetings-by-locale
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m
   http:
     client:
       # Timeout pattern for all RestClient-based external calls
@@ -29,6 +34,9 @@ management:
       probes:
         enabled: true    # /actuator/health/{liveness,readiness} for Kubernetes
       show-details: when_authorized
+      group:
+        readiness:
+          include: readinessState,db   # stop taking traffic when the DB is gone
   info:
     env:
       enabled: true

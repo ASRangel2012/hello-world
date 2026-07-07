@@ -12,17 +12,17 @@ COPY src src
 RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests
 
 ########## Stage 2: extract layered JAR ##########
-FROM eclipse-temurin:25-jre AS extract
+FROM eclipse-temurin:25-jre-alpine AS extract
 WORKDIR /extracted
 COPY --from=build /workspace/target/hello-world-service-*.jar application.jar
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination .
 
-########## Stage 3: runtime ##########
-FROM eclipse-temurin:25-jre
+########## Stage 3: runtime (minimal Alpine JRE, non-root) ##########
+FROM eclipse-temurin:25-jre-alpine
 LABEL org.opencontainers.image.source="https://github.com/example/hello-world-service"
 
-RUN groupadd --system --gid 1001 app \
-    && useradd --system --uid 1001 --gid app --shell /usr/sbin/nologin app
+RUN addgroup -S -g 1001 app \
+    && adduser -S -u 1001 -G app -s /sbin/nologin app
 USER 1001:1001
 WORKDIR /app
 
@@ -33,11 +33,11 @@ COPY --from=extract --chown=1001:1001 /extracted/snapshot-dependencies/ ./
 COPY --from=extract --chown=1001:1001 /extracted/application/ ./
 
 ENV JDK_JAVA_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-EXPOSE 8080
+# 8080 = application, 8081 = management/actuator (prod profile)
+EXPOSE 8080 8081
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD ["java", "-version"]
-# Kubernetes uses the actuator probes; the HEALTHCHECK above is a minimal
-# liveness signal for plain `docker run` (curl is not installed in the JRE image).
+# No Dockerfile HEALTHCHECK: Kubernetes owns liveness/readiness via actuator
+# probes, and docker-compose defines its own healthcheck. A `java -version`
+# style check only proves the JVM binary works and burns CPU every interval.
 
 ENTRYPOINT ["java", "-jar", "application.jar"]

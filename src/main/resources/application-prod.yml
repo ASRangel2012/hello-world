@@ -1,3 +1,8 @@
+server:
+  # TLS terminates at the ingress; trust X-Forwarded-* so the app knows the
+  # request was secure (required for HSTS and correct absolute URLs).
+  forward-headers-strategy: framework
+
 spring:
   datasource:
     url: ${DB_URL}
@@ -5,12 +10,22 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
+      pool-name: hello-world-pool
       maximum-pool-size: 10
+      minimum-idle: 2
       connection-timeout: 3000
+      max-lifetime: 1800000
+      validation-timeout: 2000
   security:
     user:
       name: ${API_USERNAME}
       password: ${API_PASSWORD}
+
+# Actuator on a dedicated port: probes and Prometheus scraping stay
+# cluster-internal; the ingress only routes the application port (8080).
+management:
+  server:
+    port: 8081
 
 # JSON structured logs (Elastic Common Schema); MDC fields such as
 # correlationId are included automatically.

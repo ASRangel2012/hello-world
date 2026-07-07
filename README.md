@@ -17,9 +17,10 @@ Key decisions:
 - **API versioning** — URI-based (`/api/v1/...`).
 - **Consistent errors** — every error is an RFC 9457 `application/problem+json` payload with a `correlationId`.
 - **Resilience** — Spring Framework 7 core resilience: `@Retryable` with exponential back-off + jitter on the external quote call; connect/read timeouts via `spring.http.client.*`. The quote is decorative, so the service degrades gracefully to a fallback instead of failing the request.
-- **Observability** — Actuator health/liveness/readiness probes, Prometheus metrics at `/actuator/prometheus`, ECS-format JSON structured logs in `prod`, and a `CorrelationIdFilter` that propagates `X-Correlation-Id` through MDC into every log line.
-- **Security** — stateless HTTP Basic via Spring Security; public: hello endpoint, health, info, API docs (dev only). Everything else authenticated. Swap `httpBasic` for `oauth2ResourceServer` when an IdP is available.
+- **Observability** — Actuator health/liveness/readiness probes (readiness includes the DB check), Prometheus metrics at `/actuator/prometheus`, `@Timed` business metrics (`greeting.resolve`, `greeting.list`), ECS-format JSON structured logs in `prod`, and a `CorrelationIdFilter` that propagates `X-Correlation-Id` through MDC into every log line. In `prod` all actuator endpoints move to a dedicated management port (8081) that the ingress never routes.
+- **Security** — stateless HTTP Basic via Spring Security; public: hello endpoint, health, info, Prometheus scrape, API docs (dev only). Everything else authenticated. Hardened response headers: HSTS (with `forward-headers-strategy` behind the TLS-terminating ingress), CSP, Referrer-Policy, Permissions-Policy on top of the framework defaults (nosniff, frame options, cache control). Inbound `X-Correlation-Id` values are allow-list validated to prevent log injection. Swap `httpBasic` for `oauth2ResourceServer` when an IdP is available.
 - **Schema management** — Flyway owns the schema (`db/migration`); Hibernate only validates.
+- **Caching** — greeting templates are static reference data; `findByLocale` is cached with Caffeine (bounded, 10 min TTL) via `@Cacheable`.
 
 ## Prerequisites
 
@@ -60,7 +61,7 @@ Example response:
 
 ```bash
 docker compose up --build
-# app on :8080 (prod profile), basic auth admin/admin-local-only
+# app on :8080 (prod profile), actuator on :8081, basic auth admin/admin-local-only
 ```
 
 ## Build & test
@@ -109,7 +110,7 @@ Errors follow RFC 9457, e.g. `GET /api/v1/greetings/hello?locale=xx`:
 
 1. **build-test** — `mvn verify` on Temurin 25 (unit + integration tests, JaCoCo), then SonarQube analysis (`SONAR_TOKEN`/`SONAR_HOST_URL`).
 2. **docker** — multi-stage layered-JAR image built and pushed to GHCR (`:sha` + `:latest`), main branch only.
-3. **deploy** — applies `k8s/` manifests and pins the deployment to the new image SHA; gated by the `production` environment.
+3. **deploy** — pins the immutable image SHA into the manifest, then applies `k8s/` manifests (single rollout); gated by the `production` environment.
 
 Required secrets: `SONAR_TOKEN` (optional), `KUBE_CONFIG` (base64 kubeconfig). `GITHUB_TOKEN` covers GHCR.
 
@@ -122,11 +123,11 @@ kubectl create secret generic hello-world-service-secrets -n hello-world \
   --from-literal=DB_USERNAME=... --from-literal=DB_PASSWORD=... \
   --from-literal=API_USERNAME=... --from-literal=API_PASSWORD=...
 
-kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml
+kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml -f k8s/pdb.yaml
 kubectl rollout status deployment/hello-world-service -n hello-world
 ```
 
-The container runs as non-root with a read-only root filesystem; probes hit `/actuator/health/liveness` and `/actuator/health/readiness`; rolling updates keep `maxUnavailable: 0`.
+The container runs as non-root with a read-only root filesystem; probes hit `/actuator/health/liveness` and `/actuator/health/readiness` on the management port (8081); rolling updates keep `maxUnavailable: 0` and a PodDisruptionBudget keeps at least one replica during voluntary disruptions.
 
 ## Project layout
 
@@ -134,10 +135,10 @@ The container runs as non-root with a read-only root filesystem; probes hit `/ac
 src/main/java/com/example/helloworld/
 ├── HelloWorldApplication.java      # @SpringBootApplication + @EnableResilientMethods
 ├── api/v1/GreetingController.java  # versioned REST API
-├── api/dto/GreetingResponse.java
+├── api/dto/                        # wire DTOs (entities never leave the service layer)
 ├── api/error/GlobalExceptionHandler.java
 ├── client/                         # QuoteClient port + simulated/http adapters (@Retryable)
-├── config/                         # Security, OpenAPI, properties, Clock
+├── config/                         # Security, OpenAPI, properties, Clock, Cache, Metrics
 ├── domain/Greeting.java            # JPA entity
 ├── exception/
 ├── repository/GreetingRepository.java

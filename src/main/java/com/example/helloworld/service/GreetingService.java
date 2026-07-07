@@ -1,16 +1,15 @@
 package com.example.helloworld.service;
 
-import com.example.helloworld.api.dto.GreetingResponse;
 import com.example.helloworld.client.QuoteClient;
 import com.example.helloworld.client.QuoteUnavailableException;
 import com.example.helloworld.domain.Greeting;
 import com.example.helloworld.exception.GreetingNotFoundException;
 import com.example.helloworld.repository.GreetingRepository;
-import java.time.Clock;
+import io.micrometer.core.annotation.Timed;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,27 +22,22 @@ public class GreetingService {
 
     private final GreetingRepository greetingRepository;
     private final QuoteClient quoteClient;
-    private final Clock clock;
-    private final String serviceVersion;
 
-    public GreetingService(GreetingRepository greetingRepository,
-                           QuoteClient quoteClient,
-                           Clock clock,
-                           @Value("${info.app.version:unknown}") String serviceVersion) {
+    public GreetingService(GreetingRepository greetingRepository, QuoteClient quoteClient) {
         this.greetingRepository = greetingRepository;
         this.quoteClient = quoteClient;
-        this.clock = clock;
-        this.serviceVersion = serviceVersion;
     }
 
-    public GreetingResponse greet(String name, String locale) {
-        Greeting greeting = greetingRepository.findByLocale(locale)
-                .orElseThrow(() -> new GreetingNotFoundException(locale));
-        String message = greeting.getTemplate().formatted(name);
-        log.debug("Resolved greeting for locale={}", locale);
-        return new GreetingResponse(message, resolveQuote(), clock.instant(), serviceVersion);
+    @Timed(value = "greeting.resolve", description = "Time to resolve a localized greeting")
+    public GreetingResult greet(String name, String locale) {
+        String normalizedLocale = locale.trim().toLowerCase(Locale.ROOT);
+        Greeting greeting = greetingRepository.findByLocale(normalizedLocale)
+                .orElseThrow(() -> new GreetingNotFoundException(normalizedLocale));
+        log.debug("Resolved greeting for locale={}", normalizedLocale);
+        return new GreetingResult(greeting.getTemplate().formatted(name), resolveQuote());
     }
 
+    @Timed(value = "greeting.list", description = "Time to list greeting templates")
     public List<Greeting> findAll() {
         return greetingRepository.findAll();
     }

@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Cancel superseded PR runs; never cancel an in-flight main build/deploy.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/hello-world-service
 
@@ -93,13 +98,16 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      # Pin the immutable SHA tag in the manifest BEFORE applying, so a single
+      # rollout happens (apply-then-set-image causes a double rollout and a
+      # transient window on the mutable :latest tag).
       - name: Deploy manifests
         run: |
-          kubectl apply -f k8s/configmap.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl apply -f k8s/ingress.yaml
-          kubectl set image deployment/hello-world-service \
-            hello-world-service=${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -n hello-world
+          sed -i "s|ghcr.io/example/hello-world-service:latest|${{ env.IMAGE_NAME }}:${{ github.sha }}|" k8s/deployment.yaml
+          kubectl apply \
+            -f k8s/configmap.yaml \
+            -f k8s/deployment.yaml \
+            -f k8s/service.yaml \
+            -f k8s/ingress.yaml \
+            -f k8s/pdb.yaml
           kubectl rollout status deployment/hello-world-service -n hello-world --timeout=180s
