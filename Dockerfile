@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ########## Stage 1: build ##########
-FROM gradle:9.5.1-jdk25 AS build
+FROM gradle:9.6.1-jdk25 AS build
 WORKDIR /workspace
 
 # Cache dependencies separately from source changes
