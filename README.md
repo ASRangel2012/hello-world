@@ -57,7 +57,7 @@ Example response:
 }
 ```
 
-### Full local stack (PostgreSQL + Redis)
+### Full local stack (PostgreSQL)
 
 ```bash
 docker compose up --build
@@ -110,11 +110,13 @@ Errors follow RFC 9457, e.g. `GET /api/v1/greetings/hello?locale=xx`:
 
 `.github/workflows/ci.yml`:
 
-1. **build-test** — `gradle build` on Temurin 25 / Gradle 9.5.1 (unit + integration tests, JaCoCo), then SonarQube analysis (`SONAR_TOKEN`/`SONAR_HOST_URL`).
-2. **docker** — multi-stage layered-JAR image built and pushed to GHCR (`:sha` + `:latest`), main branch only.
+1. **build-test** — Gradle wrapper validation, then `gradle build` on Temurin 25 / Gradle 9.5.1 (unit + integration tests, JaCoCo), then SonarQube analysis (`SONAR_TOKEN`/`SONAR_HOST_URL`).
+2. **docker** — multi-stage layered-JAR image built locally, gated by a Trivy scan (fails on CRITICAL/HIGH with fixes available), then pushed to GHCR (`:sha` + `:latest`) and signed with cosign (keyless, GitHub OIDC), main branch only.
 3. **deploy** — pins the immutable image SHA into the manifest, then applies `k8s/` manifests (single rollout); gated by the `production` environment.
 
 Required secrets: `SONAR_TOKEN` (optional), `KUBE_CONFIG` (base64 kubeconfig). `GITHUB_TOKEN` covers GHCR.
+
+Dependency updates are automated via Dependabot (`.github/dependabot.yml`): weekly PRs for Gradle dependencies (Spring artifacts grouped), GitHub Actions and Docker base images.
 
 ## Deployment (Kubernetes)
 
@@ -125,11 +127,12 @@ kubectl create secret generic hello-world-service-secrets -n hello-world \
   --from-literal=DB_USERNAME=... --from-literal=DB_PASSWORD=... \
   --from-literal=API_USERNAME=... --from-literal=API_PASSWORD=...
 
-kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml -f k8s/pdb.yaml
+kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml \
+  -f k8s/pdb.yaml -f k8s/hpa.yaml -f k8s/networkpolicy.yaml
 kubectl rollout status deployment/hello-world-service -n hello-world
 ```
 
-The container runs as non-root with a read-only root filesystem; probes hit `/actuator/health/liveness` and `/actuator/health/readiness` on the management port (8081); rolling updates keep `maxUnavailable: 0` and a PodDisruptionBudget keeps at least one replica during voluntary disruptions.
+The container runs as non-root with a read-only root filesystem; probes hit `/actuator/health/liveness` and `/actuator/health/readiness` on the management port (8081); rolling updates keep `maxUnavailable: 0` and a PodDisruptionBudget keeps at least one replica during voluntary disruptions. An HPA scales 2–6 replicas on CPU (70 %), and a NetworkPolicy restricts traffic to the ingress controller (8080), monitoring (8081), DNS and PostgreSQL.
 
 ## Project layout
 

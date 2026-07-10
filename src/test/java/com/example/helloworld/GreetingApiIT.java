@@ -17,7 +17,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Full-stack integration test (run by Failsafe in the verify phase):
+ * Full-stack integration test (run by the Gradle {@code integrationTest} task):
  * real Spring context, real PostgreSQL via Testcontainers, Flyway
  * migration applied on startup. Requires a Docker daemon.
  */

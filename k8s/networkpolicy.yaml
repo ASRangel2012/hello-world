@@ -1,0 +1,48 @@
+# Default-deny for the app pods, then allow only what the service needs:
+#   in : ingress controller -> 8080 (API), monitoring -> 8081 (metrics/probes)
+#   out: DNS, PostgreSQL
+# Kubelet probe traffic is not subject to NetworkPolicy, so probes on 8081
+# keep working regardless. Adjust the namespace labels to your cluster's
+# conventions if they differ.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hello-world-service
+  namespace: hello-world
+spec:
+  podSelector:
+    matchLabels:
+      app: hello-world-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8081
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: database
+      ports:
+        - protocol: TCP
+          port: 5432

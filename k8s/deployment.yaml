@@ -25,7 +25,11 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        # Must match the app UID/GID created in the Dockerfile runtime stage
+        # (addgroup/adduser 1001). Kubernetes wins if they ever diverge —
+        # keep both in sync when changing base images.
         runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       containers:
