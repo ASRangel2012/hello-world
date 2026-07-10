@@ -29,11 +29,16 @@ dependencies {
     // Web (Spring Boot 4 modular starter, replaces spring-boot-starter-web)
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    // Boot 4 modularization: RestClient auto-config (RestClient.Builder bean +
+    // spring.http.client.* timeout properties) is no longer part of the web starter.
+    implementation("org.springframework.boot:spring-boot-starter-restclient")
 
     // Data access
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-database-postgresql")
+    // Boot 4 modularization: flyway-core alone no longer triggers auto-config —
+    // the spring-boot-flyway module (via its starter) is required.
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("com.h2database:h2")
     runtimeOnly("org.postgresql:postgresql")
 
