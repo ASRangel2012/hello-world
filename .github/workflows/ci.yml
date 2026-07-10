@@ -52,7 +52,7 @@ jobs:
         run: gradle sonar -Dsonar.host.url=$SONAR_HOST_URL
 
       - name: Upload JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-jar
           path: build/libs/hello-world-service-*.jar
