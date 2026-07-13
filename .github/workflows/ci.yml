@@ -20,7 +20,7 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # full history for Sonar blame data
 
@@ -68,7 +68,7 @@ jobs:
       packages: write
       id-token: write   # cosign keyless signing via GitHub OIDC
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v4
 
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production   # gate with required reviewers in repo settings
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configure kubeconfig
         run: |
