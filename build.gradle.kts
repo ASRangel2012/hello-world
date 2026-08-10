@@ -5,7 +5,7 @@ plugins {
     java
     jacoco
     id("org.springframework.boot") version "4.1.0"
-    id("org.sonarqube") version "7.3.1.8318"
+    id("org.sonarqube") version "7.4.0.8496"
 }
 
 group = "com.example"
@@ -58,7 +58,7 @@ dependencies {
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     // API documentation
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
     // Test — Testcontainers 2.x is no longer managed by the Boot BOM,
     // so its own BOM is imported (2.0.4 = the version Boot 4.0.5 is built against).
